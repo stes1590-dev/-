@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>我的遊戲收藏館</title>
+  <style>
+    /* 全局樣式 */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      transition: background-image 1.5s ease-in-out;
+    }
+
+    /* 背景覆蓋層 */
+    #bg-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      transition: opacity 1.5s ease-in-out;
+      opacity: 1;
+    }
+
+    /* 主卡片 */
+    .app-card {
+      max-width: 850px; 
+      width: 100%;
+      background: rgba(22, 28, 46, 0.78);
+      backdrop-filter: blur(8px);
+      border-radius: 48px;
+      padding: 30px 24px 40px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 215, 100, 0.15);
+      transition: all 0.2s ease;
+      border: 1px solid rgba(255, 215, 100, 0.2);
+    }
+
+    /* 頁面容器 */
+    .page {
+      display: none;
+      flex-direction: column;
+      gap: 22px;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .page.active {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      0% { opacity: 0.5; transform: translateY(8px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    /* 標題區 */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      border-bottom: 2px solid rgba(255, 215, 100, 0.25);
+      padding-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #f7d875, #f5b342);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      letter-spacing: 1px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .header h1::before {
+      content: "🎮";
+      font-size: 2rem;
+      filter: drop-shadow(0 0 6px #f5b342);
+    }
+
+    .back-btn {
+      background: rgba(255, 215, 100, 0.12);
+      border: 1px solid rgba(255, 215, 100, 0.35);
+      color: #f5d98f;
+      padding: 8px 18px;
+      border-radius: 40px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      backdrop-filter: blur(4px);
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .back-btn:hover {
+      background: rgba(255, 215, 100, 0.25);
+      border-color: #f5b342;
+      color: #fff3d1;
+      transform: scale(1.02);
+    }
+
+    /* 首頁按鈕網格 */
+    .game-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 16px;
+      margin-top: 8px;
+    }
+
+    .game-btn {
+      background: rgba(40, 48, 72, 0.7);
+      border-radius: 20px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      padding: 0;
+      min-height: 180px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+    }
+
+    .game-btn img {
+      width: 100%;
+      height: 120px;
+      object-fit: cover;
+    }
+
+    .game-btn span {
+      padding: 12px;
+      text-align: center;
+      font-weight: 600;
+      color: #d6dcec;
+    }
+    
+    .game-btn:hover {
+      transform: translateY(-8px) scale(1.06);
+      background: rgba(65, 78, 115, 0.8);
+      border-color: #f5b342;
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5), 0 0 12px rgba(245, 179, 66, 0.3);
+      color: #fff8e7;
+    }
+
+    /* 詳細頁面主容器 - 左右並排佈局 */
+    .detail-content {
+      background: rgba(12, 16, 28, 0.6);
+      border-radius: 32px;
+      padding: 24px;
+      border: 1px solid rgba(255, 215, 100, 0.15);
+      backdrop-filter: blur(4px);
+      margin-top: 6px;
+      display: flex;
+      gap: 24px; 
+      align-items: flex-start;
+    }
+
+    /* 📸 獨立的媒體展示專區 (包含主圖與縮圖) */
+    .detail-media-zone {
+      flex: 1.3; 
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .detail-media-zone .game-image-main {
+      width: 100%;
+      height: auto;
+      aspect-ratio: 16 / 9;
+      object-fit: cover;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 215, 100, 0.25);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
+      display: block;
+      cursor: zoom-in; /* 滑鼠移上去顯示放大鏡提示 */
+      transition: all 0.2s ease;
+    }
+
+    .detail-media-zone .game-image-main:hover {
+      border-color: #f5b342;
+      transform: scale(1.01);
+    }
+
+    /* 🖼️ 我的截圖相簿網格區 */
+    .my-screenshots-title {
+      font-size: 0.85rem;
+      color: #f7d875;
+      margin-top: 4px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .screenshots-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr); 
+      gap: 8px;
+    }
+
+    .screenshots-grid img {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .screenshots-grid img:hover {
+      border-color: #f5b342;
+      transform: scale(1.05);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    }
+
+    /* 📝 右側的文字介紹專區 */
+    .detail-info-zone {
+      flex: 1.7; 
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .detail-content .game-desc {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 16px 20px;
+      border-radius: 20px;
+      color: #c8d0e6;
+      line-height: 1.7;
+      margin: 0;
+    }
+
+    .detail-content .game-desc i {
+      color: #f5b342;
+      font-style: normal;
+      font-weight: 600;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .detail-content .reason {
+      background: rgba(245, 179, 66, 0.06);
+      border-radius: 20px;
+      padding: 16px 20px;
+      color: #f0e3d0;
+      border: 1px dashed rgba(245, 179, 66, 0.25);
+      line-height: 1.7;
+      margin: 0;
+    }
+
+    /* 🔍 ✨ 全螢幕燈箱樣式區 ✨ */
+    .lightbox {
+      display: none; /* 預設隱藏 */
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(6, 9, 17, 0.95);
+      backdrop-filter: blur(10px);
+      z-index: 9999;
+      justify-content: center;
+      align-items: center;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .lightbox.active {
+      display: flex;
+    }
+
+    .lightbox-content {
+      max-width: 90%;
+      max-height: 80vh;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+      object-fit: contain; /* 確保全螢幕時圖片完整不被裁切 */
+      border: 1px solid rgba(255, 215, 100, 0.2);
+    }
+
+    /* 燈箱控制按鈕 */
+    .lightbox-btn {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: white;
+      font-size: 1.5rem;
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      user-select: none;
+    }
+
+    .lightbox-btn:hover {
+      background: rgba(245, 179, 66, 0.8);
+      border-color: #f5b342;
+      transform: scale(1.1);
+    }
+
+    .lightbox-close { top: 24px; right: 24px; font-size: 1.2rem; }
+    .lightbox-prev { left: 24px; }
+    .lightbox-next { right: 24px; }
+
+    /* 手機版自適應 */
+    @media (max-width: 680px) {
+      .detail-content {
+        flex-direction: column;
+      }
+      .detail-media-zone, .detail-info-zone {
+        flex: none;
+        width: 100%;
+      }
+      .screenshots-grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+      .lightbox-btn { width: 44px; height: 44px; font-size: 1.2rem; }
+      .lightbox-prev { left: 10px; }
+      .lightbox-next { right: 10px; }
+    }
+
+    .footer-note {
+      margin-top: 20px;
+      text-align: center;
+      color: #5d6a8a;
+      font-size: 0.8rem;
+      border-top: 1px solid rgba(255, 215, 100, 0.08);
+      padding-top: 16px;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="bg-overlay"></div>
+
+  <div class="app-card">
+    <div id="page-home" class="page active">
+      <div class="header">
+        <h1>我的遊戲收藏館</h1>
+        <span style="font-size: 1.2rem; color: #b8c4e0;"></span>
+      </div>
+      <div class="game-grid">
+        <div class="game-btn" data-game="0"> <img src="官圖/maxresdefault-3.jpg"><span>鳴潮</span></div>
+        <div class="game-btn" data-game="1"> <img src="官圖/41c0c097f6d7a08e8a0814bffebf3927_84590008029179416.png"><span>崩壞星穹鐵道</span></div>
+        <div class="game-btn" data-game="2"> <img src="官圖/Minecraft_TheGardenAwakens_DotNet_2058x1440.png"><span>Minecraft</span></div>
+        <div class="game-btn" data-game="3"> <img src="官圖/686f3bf39d01e9634dc79188RgAjPZSm06.webp"><span>超自然行動組</span></div>
+        <div class="game-btn" data-game="4"> <img src="官圖/176970909675.jpg"><span>朋友收集夢想生活</span></div>
+        <div class="game-btn" data-game="5"> <img src="官圖/726495297_1014059681014144_8013735428295330712_n.jpg"><span>麻雀一番街</span></div>
+        <div class="game-btn" data-game="6"> <img src="官圖/1_3_5a49e4e.jpg"><span>第五人格</span></div>
+      </div>
+      <div class="footer-note">✦ 點擊按鈕探索我的遊戲世界 ✦</div>
+    </div>
+
+    <div id="page-detail" class="page">
+      <div class="header">
+        <h1 id="detail-title">🎮 遊戲</h1>
+        <button class="back-btn" id="backHomeBtn">← 回首頁</button>
+      </div>
+      <div class="detail-content" id="detailContent"></div>
+    </div>
+  </div>
+
+  <div id="lightbox" class="lightbox">
+    <button class="lightbox-btn lightbox-close" id="lbClose">✕</button>
+    <button class="lightbox-btn lightbox-prev" id="lbPrev">←</button>
+    <img src="" class="lightbox-content" id="lbImg">
+    <button class="lightbox-btn lightbox-next" id="lbNext">→</button>
+  </div>
+
+  <script>
+    // 背景輪播邏輯
+    const bgImages = [
+      '官圖/wuthering-waves-changli-3276x1843-87dda09a79b9.jpg', '官圖/kesj2dovatwy6h6s9q9p88bpbv8r2es.jpg','官圖/maxresdefault.jpg','官圖/screen-0.jpg', '官圖/apps.60323.14294656681058683.4d17bdd8-7026-429a-846f-cf7836bc9e56.jpg', '官圖/a5a4aaf311fb75311227e7700ae9a4a1.jpg','官圖/17169391605042560.jpg','官圖/1764324310300627.jpg','官圖/5a496-16623340088764-1920.jpg','官圖/0ef8df5c-a7dd-4eb3-b11a-743058d93953.jpg','官圖/rinascita-9c7cece0.jpg','官圖/4fkyjet3da9temvjzl-1705473851530.jpg','官圖/img-hl-247d5093.jpg','官圖/lahaiRoi-d3c54473.webp','官圖/heiHaiAn-09552824.jpg','官圖/efuattqipdryt1hm7z-1708309555957繁1114×710.jpg','官圖/b0771o48zcone1mxcu-1781888162758.jpg','官圖/48eff19a1855185c300644745eb5008d_4969469732633976188.jpg','官圖/055ea24e03e9462ea9df2adf3e2438a1.webp','官圖/01_zh-tw-becdea24.webp','官圖/0fad13a7cbaf0130592b743afece056b_182159555601491327.png','官圖/2652a644335ab796bb7fa6b57099f4aa_982978265752811060.jpeg','官圖/2s28i4swqedpi8knuo-1780473667441.jpg','官圖/229a2f2792d2de877425ab0345108fc8_626067683600381083.jpg','官圖/944c72fbb324f87f64e0a1b138de237b_6960780421111227554.jpg','官圖/wallpaper_minecraft_island_1920x1080.png','官圖/wallpaper_minecraft_15th-anniversary_1920x1080.png','官圖/725592920_1038222675303808_6665940436009146974_n.jpg','官圖/69d4c9164e7f3570330933cakFbvhWxs03.webp','官圖/ss_2eb5a5b034d678a2c78b2748c99371880b6b2d1f.1920x1080.jpg'
+    ];
+    const overlay = document.getElementById('bg-overlay');
+    let currentBgIndex = 0;
+    if (bgImages.length > 0) overlay.style.backgroundImage = `url('${bgImages[0]}')`;
+    if (bgImages.length > 1) {
+      setInterval(() => {
+        overlay.style.opacity = '0';
+        setTimeout(() => {
+          let randomIndex;
+          do { randomIndex = Math.floor(Math.random() * bgImages.length); } while (randomIndex === currentBgIndex);
+          currentBgIndex = randomIndex;
+          overlay.style.backgroundImage = `url('${bgImages[currentBgIndex]}')`;
+          overlay.style.opacity = '1';
+        }, 1500);
+      }, 10000);
+    }
+
+    // 遊戲資料
+    const games = [
+      {
+        name: "鳴潮",
+        image: "官圖/maxresdefault-3.jpg",
+        myScreenshots: ["截圖/mc1.jpg", "截圖/mc2.jpg", "截圖/mc3.jpg", "截圖/mc4.jpg", "截圖/mc5.jpg", "截圖/mc6.jpg", "截圖/mc7.jpg"],
+        intro: "《鳴潮》是由庫洛遊戲開發的開放世界動作RPG。在名為「索拉里斯」的廣闊世界中，玩家扮演「漂泊者」，與夥伴們對抗神秘的「頻率」災害。遊戲以高速戰鬥、自由探索及獨特的「共鳴」系統為核心，美術風格融合科幻與東方美學。",
+        reason: "我喜歡鳴潮裡的弗洛洛而入坑，她冷冽又充滿故事感的氣質深深吸引我。"
+      },
+      {
+        name: "崩壞星穹鐵道",
+        image: "官圖/41c0c097f6d7a08e8a0814bffebf3927_84590008029179416.png",
+        myScreenshots: ["截圖/bt1.jpg", "截圖/bt2.png", "截圖/bt3.png", "截圖/bt4.jpg", "截圖/bt5.jpg", "截圖/bt6.jpg", "截圖/bt7.jpg", "截圖/bt8.jpg"], 
+        intro: "《崩壞：星穹鐵道》是米哈遊推出的銀河冒險RPG。玩家搭乘「星穹列車」穿梭於各大行星，體驗「開拓」之旅。遊戲結合回合制策略、箱庭探索與深刻的群像劇，每一個星球都蘊藏獨特文明與危機。",
+        reason: "我喜歡崩鐵的劇情塑造而留下，每個角色的高光與世界觀的伏筆都讓我著迷。"
+      },
+      {
+        name: "Minecraft",
+        image: "官圖/Minecraft_TheGardenAwakens_DotNet_2058x1440.png", 
+        myScreenshots: ["截圖/mk1.jpg", "截圖/mk2.jpg", "截圖/mk3.jpg", "截圖/mk4.jpg", "截圖/mk5.jpg", "截圖/mk6.jpg", "截圖/mk7.jpg", "截圖/mk8.jpg", "截圖/mk9.jpg"], 
+        intro: "《Minecraft》是全球知名的沙盒建造遊戲，由Mojang Studios開發。在無限生成的方塊世界中，玩家可以盡情探索、採集、合成、建造，從簡易小屋到宏偉城堡，甚至是紅石機械，自由度極高。",
+        reason: "我喜歡Minecraft自由休閑的風格，沒有壓力，隨時隨地都能發揮創意。"
+      },
+      {
+        name: "超自然行動組",
+        image: "官圖/686f3bf39d01e9634dc79188RgAjPZSm06.webp", 
+        myScreenshots: ["截圖/czr1.png", "截圖/czr2.jpg", "截圖/czr3.jpg", "截圖/czr4.jpg", "截圖/czr5.jpg", "截圖/czr6.jpg", "截圖/czr7.jpg"],
+        intro: "《超自然行動組》是一款合作生存恐怖遊戲，玩家組成四人小隊進入被超自然力量侵蝕的區域，回收「異象物」。遊戲氛圍緊張，需要默契配合與資源管理，每一次撤離都驚心動魄。",
+        reason: "我喜歡超自然行動組在緊張刺激的氛圍下帶回回收物，那種腎上腺素飆升的感覺很過癮。"
+      },
+      {
+        name: "朋友收集夢想生活",
+        image: "官圖/176970909675.jpg", 
+        myScreenshots: [],
+        intro: "《朋友收集夢想生活》是一款模擬養成×角色收集遊戲。玩家可以創造並培養數十位獨具個性的角色，為他們安排生活、工作與夢想，觀察他們之間的互動與成長，打造專專屬的溫馨社群。",
+        reason: "我喜歡觀察朋友收集夢想生活裡每個自己創造的角色，看著他們發展出獨特人生很有趣。"
+      },
+      {
+        name: "麻雀一番街",
+        image: "官圖/726495297_1014059681014144_8013735428295330712_n.jpg", 
+        myScreenshots: ["截圖/mj1.jpg", "截圖/mj2.jpg", "截圖/mj3.jpg", "截圖/mj4.jpg", "截圖/mj5.jpg"],
+        intro: "《麻雀一番街》是結合日式麻將與角色養成的遊戲。玩家在充滿活力的「一番街」中與個性鮮明的麻將少女們對局，享受立直、碰槓的樂趣，同時解鎖角色故事與羈絆。",
+        reason: "我喜歡麻雀一番街裡的角色形象，而且打麻將有助於思考，每一局都是策略與運氣的博弈。"
+      },
+      {
+        name: "第五人格",
+        image: "官圖/1_3_5a49e4e.jpg",
+        myScreenshots: ["截圖/dw1.png", "截圖/dw2.png", "截圖/dw3.png", "截圖/dw4.png", "截圖/dw5.png", "截圖/dw6.png", "截圖/dw7.png", "截圖/dw8.png", "截圖/dw9.png", "截圖/dw10.jpg"],
+        intro: "《第五人格》是非對稱競技手遊，由網易開發。玩家可選擇扮演「監管者」或「求生者」，在哥德風莊園中展開追逐與解謎。遊戲節奏緊湊，角色技能多樣，非常考驗團隊合作。",
+        reason: "我喜歡第五人格，因為這是可以跟朋友玩的遊戲，一起逃生 or 追捕的歡樂時光無可取代。"
+      }
+    ];
+
+    // 頁面控制與渲染邏輯
+    const pageHome = document.getElementById('page-home');
+    const pageDetail = document.getElementById('page-detail');
+    const detailTitle = document.getElementById('detail-title');
+    const detailContent = document.getElementById('detailContent');
+    const backBtn = document.getElementById('backHomeBtn');
+    const gameBtns = document.querySelectorAll('.game-btn');
+
+    // 🔍 燈箱元素變數
+    const lightbox = document.getElementById('lightbox');
+    const lbImg = document.getElementById('lbImg');
+    const lbClose = document.getElementById('lbClose');
+    const lbPrev = document.getElementById('lbPrev');
+    const lbNext = document.getElementById('lbNext');
+
+    // 用來記錄目前在燈箱播放的「該款遊戲所有圖片清單」與「當前圖片索引」
+    let activePlaylist = [];
+    let activePhotoIndex = 0;
+
+    function showPage(pageId) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.getElementById(pageId).classList.add('active');
+    }
+
+    function renderGameDetail(index) {
+      const game = games[index];
+      if (!game) return;
+      
+      detailTitle.innerHTML = ` ${game.name}`;
+      
+      // 建立這款遊戲在燈箱中可以播放的完整陣列（官圖在第 0 個，後面接個人截圖）
+      activePlaylist = [game.image, ...(game.myScreenshots || [])];
+      
+      let screenshotsHTML = '';
+      if (game.myScreenshots && game.myScreenshots.length > 0) {
+        screenshotsHTML = `
+          <div class="my-screenshots-title">📸 我的遊戲截圖 (點擊切換查看，點大圖可放大)</div>
+          <div class="screenshots-grid">
+            <img src="${game.image}" onclick="changeMainImage('${game.image}')" title="官方圖">
+            ${game.myScreenshots.map(src => `<img src="${src}" onclick="changeMainImage('${src}')">`).join('')}
+          </div>
+        `;
+      }
+
+      detailContent.innerHTML = `
+        <div class="detail-media-zone">
+          <img src="${game.image}" class="game-image-main" id="mainDetailImg" alt="${game.name}" onclick="openLightbox()">
+          ${screenshotsHTML}
+        </div>
+
+        <div class="detail-info-zone">
+          <div class="game-desc">
+            <i>📖 遊戲介紹</i>
+            ${game.intro}
+          </div>
+          <div class="reason">
+            <strong>💬 我的理由：</strong><br>
+            ${game.reason}
+          </div>
+          <div style="color: #9aa3c2; font-size: 0.85rem; text-align: right; border-top: 1px solid rgba(255,215,100,0.1); padding-top: 12px; margin-top: 8px;">
+            ✦ 點擊「回首頁」繼續探索 ✦
+          </div>
+        </div>
+      `;
+      
+      // 初始化播放索引回到 0 (也就是目前的官圖)
+      activePhotoIndex = 0;
+    }
+
+    // 提供點擊小圖切換大圖的功能
+    function changeMainImage(src) {
+      const mainImg = document.getElementById('mainDetailImg');
+      if (mainImg) {
+        mainImg.src = src;
+        // 同時更新目前準備要全螢幕放大的圖片索引位置
+        const idx = activePlaylist.indexOf(src);
+        if (idx !== -1) activePhotoIndex = idx;
+      }
+    }
+
+    // =============================================
+    // 🔍 ✨ 燈箱控制邏輯 JavaScript ✨
+    // =============================================
+    function openLightbox() {
+      if (activePlaylist.length === 0) return;
+      lbImg.src = activePlaylist[activePhotoIndex];
+      lightbox.classList.add('active');
+    }
+
+    function closeLightbox() {
+      lightbox.classList.remove('active');
+    }
+
+    function nextPhoto(e) {
+      if(e) e.stopPropagation(); // 防止點按鈕觸發外層關閉
+      activePhotoIndex = (activePhotoIndex + 1) % activePlaylist.length;
+      lbImg.src = activePlaylist[activePhotoIndex];
+    }
+
+    function prevPhoto(e) {
+      if(e) e.stopPropagation(); // 防止點按鈕觸發外層關閉
+      activePhotoIndex = (activePhotoIndex - 1 + activePlaylist.length) % activePlaylist.length;
+      lbImg.src = activePlaylist[activePhotoIndex];
+    }
+
+    // 綁定燈箱事件
+    lbClose.addEventListener('click', closeLightbox);
+    lbNext.addEventListener('click', nextPhoto);
+    lbPrev.addEventListener('click', prevPhoto);
+    lightbox.addEventListener('click', closeLightbox); // 點擊黑底任何地方關閉
+    lbImg.addEventListener('click', (e) => e.stopPropagation()); // 點擊大圖本身不關閉
+
+    // 支援鍵盤左右方向鍵與 ESC 鍵
+    document.addEventListener('keydown', (e) => {
+      if (!lightbox.classList.contains('active')) return;
+      if (e.key === 'ArrowRight') nextPhoto();
+      if (e.key === 'ArrowLeft') prevPhoto();
+      if (e.key === 'Escape') closeLightbox();
+    });
+
+    gameBtns.forEach(btn => {
+      btn.addEventListener('click', function() {
+        const idx = parseInt(this.getAttribute('data-game'), 10);
+        if (!isNaN(idx) && idx >= 0 && idx < games.length) {
+          renderGameDetail(idx);
+          showPage('page-detail');
+        }
+      });
+    });
+
+    backBtn.addEventListener('click', () => showPage('page-home'));
+    showPage('page-home');
+  </script>
+</body>
+</html>
